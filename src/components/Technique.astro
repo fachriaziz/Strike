@@ -14,6 +14,16 @@ const initialVideo = techniqueVideos[initialTechnique]
 				<video controls playsinline preload="none" data-technique-video
 					src={initialVideo.src} poster={initialVideo.poster}
 					aria-label={`${initialTopic?.label ?? 'Technique'} demonstration`}></video>
+				<button class="video-toggle" type="button" data-video-toggle aria-label="Play video" hidden>
+					<span class="video-toggle-icon" aria-hidden="true">
+						<svg class="video-play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M8 5v14l11-7z" />
+						</svg>
+						<svg class="video-pause-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M7 5h4v14H7zm6 0h4v14h-4z" />
+						</svg>
+					</span>
+				</button>
 			</div>
 			<div class="video-feedback">
 				<p role="status" data-video-status></p>
@@ -42,6 +52,7 @@ const initialVideo = techniqueVideos[initialTechnique]
 	const technique = document.getElementById('technique')
 	if (technique) {
 		const player = technique.querySelector<HTMLVideoElement>('[data-technique-video]')
+		const toggle = technique.querySelector<HTMLButtonElement>('[data-video-toggle]')
 		const status = technique.querySelector<HTMLElement>('[data-video-status]')
 		const retry = technique.querySelector<HTMLButtonElement>('[data-video-retry]')
 		const showError = (failed: boolean) => {
@@ -49,6 +60,36 @@ const initialVideo = techniqueVideos[initialTechnique]
 			if (retry) retry.hidden = !failed
 		}
 		player?.addEventListener('error', () => showError(!!player.error))
+		if (player && toggle) {
+			const syncToggle = () => {
+				const playing = !player.paused && !player.ended
+				toggle.toggleAttribute('data-playing', playing)
+				toggle.setAttribute('aria-label', playing ? 'Pause video' : 'Play video')
+			}
+			for (const event of ['play', 'pause', 'ended', 'emptied']) player.addEventListener(event, syncToggle)
+			toggle.addEventListener('click', () => {
+				if (!player.paused && !player.ended) {
+					player.pause()
+					return
+				}
+				const source = player.src
+				void player.play().catch((error: unknown) => {
+					if (player.src !== source || (error instanceof DOMException && error.name === 'AbortError')) return
+					showError(true)
+				})
+			})
+			syncToggle()
+			toggle.hidden = false
+
+			if (typeof IntersectionObserver === 'function') {
+				const prepare = new IntersectionObserver(([entry]) => {
+					if (!entry.isIntersecting) return
+					player.preload = 'auto'
+					prepare.disconnect()
+				}, { rootMargin: '240px 0px' })
+				prepare.observe(player)
+			}
+		}
 		retry?.addEventListener('click', () => {
 			showError(false)
 			player?.load()
@@ -75,6 +116,7 @@ const initialVideo = techniqueVideos[initialTechnique]
 	}
 
 	.technique-media {
+		position: relative;
 		aspect-ratio: 16 / 9;
 		background: var(--color-canvas);
 		border-radius: 1rem;
@@ -86,6 +128,36 @@ const initialVideo = techniqueVideos[initialTechnique]
 		height: 100%;
 		object-fit: contain;
 		border-radius: inherit;
+	}
+
+	.video-toggle:not([hidden]) {
+		position: absolute;
+		inset: 0 0 4rem;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		color: white;
+		border-radius: inherit;
+	}
+
+	.video-toggle-icon {
+		display: grid;
+		place-items: center;
+		width: 3.5rem;
+		aspect-ratio: 1;
+		border-radius: 50%;
+		background: rgb(8 8 8 / 78%);
+		translate: 0 2rem;
+	}
+
+	.video-toggle[data-playing]:not(:focus-visible) .video-toggle-icon,
+	.video-toggle[data-playing] .video-play-icon,
+	.video-toggle:not([data-playing]) .video-pause-icon {
+		visibility: hidden;
+	}
+
+	.video-toggle-icon svg {
+		grid-area: 1 / 1;
 	}
 
 	.video-feedback:has(p:not(:empty)) {
