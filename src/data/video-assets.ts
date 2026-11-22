@@ -1,21 +1,13 @@
-import { statSync } from 'node:fs'
-import { join } from 'node:path'
+import alignment from '../assets/technique/alignment.mp4?url'
+import alignmentPoster from '../assets/technique/alignment-poster.webp?url'
+import stanceGrip from '../assets/technique/stance-grip.mp4?url'
+import stanceGripPoster from '../assets/technique/stance-grip-poster.webp?url'
+import stroke from '../assets/technique/stroke.mp4?url'
+import strokePoster from '../assets/technique/stroke-poster.webp?url'
 import type { TechniqueId, VideoAsset } from './guide'
 
-const techniqueAssets = import.meta.glob<string>('../assets/technique/*.{mp4,webp,vtt}', {
-	query: '?url&no-inline', import: 'default', eager: true,
-})
-
-function techniqueAsset(filename: string): string | undefined {
-	const url = techniqueAssets[`../assets/technique/${filename}`]
-	if (!url) return
-	const file = statSync(join('src', 'assets', 'technique', filename), { throwIfNoEntry: false })
-	if (file?.isFile() && file.size > 0) return url
-}
-
-export function getTechniqueVideo(id: TechniqueId): VideoAsset | undefined {
-	const src = techniqueAsset(`${id}.mp4`)
-	const poster = techniqueAsset(`${id}-poster.webp`)
-	if (!src || !poster) return
-	return { src, poster, captions: techniqueAsset(`${id}.vtt`) }
-}
+export const techniqueVideos = {
+	'stance-grip': { src: stanceGrip, poster: stanceGripPoster },
+	alignment: { src: alignment, poster: alignmentPoster },
+	stroke: { src: stroke, poster: strokePoster },
+} satisfies Record<TechniqueId, VideoAsset>

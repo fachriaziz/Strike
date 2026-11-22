@@ -1,6 +1,6 @@
 export type EquipmentId = 'cue' | 'cue-ball' | 'object-balls' | 'pockets';
 export type TechniqueId = 'stance-grip' | 'alignment' | 'stroke';
-export type VideoAsset = { src: string; poster: string; captions?: string };
+export type VideoAsset = { src: string; poster: string };
 
 type Topic<Id extends string> = {
 	id: Id;

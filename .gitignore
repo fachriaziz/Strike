@@ -37,6 +37,7 @@ pnpm-debug.log*
 
 # editing master (the site imports hero.mp4)
 /src/assets/hero/hero.MOV
+/src/assets/technique/*.[Mm][Oo][Vv]
 
 # macOS-specific files
 .DS_Store
