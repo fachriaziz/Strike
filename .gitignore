@@ -6,7 +6,7 @@ dist/
 
 # local reviews
 /data/*
-!/data/reviews.seed.sqlite
+!/data/reviews.sqlite
 /.data/
 
 # dependencies

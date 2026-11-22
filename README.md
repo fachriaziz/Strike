@@ -22,4 +22,4 @@ Open `http://localhost:4321`.
 - `npm run build` creates the production build.
 - `npm run start` runs the production build after building it.
 
-New clones start with the reviews in `data/reviews.seed.sqlite`. New submissions are saved to a separate local database.
+Reviews are stored in `data/reviews.sqlite`.

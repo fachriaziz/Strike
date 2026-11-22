@@ -1,4 +1,4 @@
-import { constants, copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { reviewLimits, reviewStars } from '../data/review-fields';
@@ -83,18 +83,10 @@ function migrateReviews(db: DatabaseSync) {
 function withDatabase<T>(work: (db: DatabaseSync) => T): T {
 	const defaultPath = 'data/reviews.sqlite';
 	const legacyPath = '.data/strait-reviews.sqlite';
-	const seedPath = 'data/reviews.seed.sqlite';
 	const override = process.env.STRIKE_REVIEWS_DB || process.env.STRAIT_REVIEWS_DB;
 	const selectedPath = override || (existsSync(defaultPath) || !existsSync(legacyPath) ? defaultPath : legacyPath);
 	const path = resolve(selectedPath);
 	mkdirSync(dirname(path), { recursive: true });
-	if (!override && selectedPath === defaultPath && !existsSync(path) && existsSync(seedPath)) {
-		try {
-			copyFileSync(seedPath, path, constants.COPYFILE_EXCL);
-		} catch (error) {
-			if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) throw error;
-		}
-	}
 	const db = new DatabaseSync(path, { timeout: 500 });
 	try {
 		migrateReviews(db);
