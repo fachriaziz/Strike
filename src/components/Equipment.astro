@@ -1,0 +1,121 @@
+---
+import Table from '../assets/equipment/table.svg'
+import cueBallFocus from '../assets/equipment/cue-ball-focus.svg?url'
+import objectBallsFocus from '../assets/equipment/object-balls-focus.svg?url'
+import pocketsFocus from '../assets/equipment/pockets-focus.svg?url'
+import { equipmentTopics, initialEquipment } from '../data/guide'
+
+const focusOverlays = {
+	'cue-ball': cueBallFocus,
+	'object-balls': objectBallsFocus,
+	pockets: pocketsFocus,
+}
+---
+
+<section class="section-shell" id="equipment" aria-labelledby="equipment-title" data-initial-topic={initialEquipment} data-reserve-topic-space>
+	<div class="page-width">
+		<h2 class="section-heading mb-8" id="equipment-title">Equipment</h2>
+		<div class="equipment-grid">
+			<div class="equipment-diagram scroll-media" data-selected-part={initialEquipment}>
+				<Table role="img" aria-label="Pool table diagram. Highlighted: Cue." />
+				{Object.entries(focusOverlays).map(([part, src]) => (
+					<img class="equipment-focus" data-focus-part={part} src={src} alt="" width="720" height="380" hidden />
+				))}
+			</div>
+			<div>
+				<div class="equipment-topics" aria-label="Equipment topics" data-topic-list hidden>
+					{equipmentTopics.map(({ id, label }) => (
+						<button class="topic" type="button" data-topic={id} id={`equipment-tab-${id}`} aria-controls={`equipment-panel-${id}`}>{label}</button>
+					))}
+				</div>
+				<div class="equipment-descriptions mt-4 grid gap-6">
+					{equipmentTopics.map(({ id, label, description, note }) => (
+						<article id={`equipment-panel-${id}`} aria-labelledby={`equipment-topic-${id}`} class="space-y-2">
+							<h3 class="text-subheading font-semibold" id={`equipment-topic-${id}`}>{label}</h3>
+							<p class="text-body">{description}</p>
+							{note && <p class="text-body text-muted">{note}</p>}
+						</article>
+					))}
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<script>
+	import { initTopicTabs } from '../scripts/topic-tabs'
+
+	const equipment = document.getElementById('equipment')
+	const diagram = equipment?.querySelector<HTMLElement>('.equipment-diagram')
+	const svg = diagram?.querySelector('svg')
+	if (equipment && diagram && svg) {
+		const overlays = diagram.querySelectorAll<HTMLImageElement>('[data-focus-part]')
+		initTopicTabs(equipment, (id, tab) => {
+			diagram.dataset.selectedPart = id
+			for (const overlay of overlays) overlay.hidden = overlay.dataset.focusPart !== id
+			const highlight = tab.textContent?.trim()
+			if (highlight) svg.setAttribute('aria-label', `Pool table diagram. Highlighted: ${highlight}.`)
+		})
+	}
+</script>
+
+<style>
+	.equipment-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+		align-items: center;
+		gap: clamp(1.5rem, 3.333vw, 3rem);
+	}
+
+	.equipment-diagram :global(svg) {
+		width: 100%;
+		height: auto;
+	}
+
+	.equipment-diagram {
+		position: relative;
+	}
+
+	.equipment-focus {
+		position: absolute;
+		inset: 0;
+		inline-size: 100%;
+		block-size: auto;
+		pointer-events: none;
+	}
+
+	.equipment-diagram:not([data-selected-part='cue']) :global([id='Focus']) {
+		display: none;
+	}
+
+	.equipment-topics:not([hidden]) {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.75rem;
+	}
+
+	.equipment-topics .topic:focus-visible {
+		outline-color: var(--color-foreground);
+	}
+
+	.equipment-descriptions > [role='tabpanel'] {
+		grid-area: 1 / 1;
+		align-self: start;
+	}
+
+	.equipment-descriptions > [inert] {
+		visibility: hidden;
+	}
+
+	@media (max-width: 56rem) {
+		.equipment-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	@media (max-width: 27rem) {
+		.equipment-topics:not([hidden]) {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+</style>

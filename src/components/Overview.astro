@@ -1,0 +1,135 @@
+---
+import { Image } from 'astro:assets';
+import overview01 from '../assets/overview/overview-01.webp';
+import overview02 from '../assets/overview/overview-02.webp';
+import overview03 from '../assets/overview/overview-03.webp';
+import overview04 from '../assets/overview/overview-04.webp';
+
+const photos = [
+	{ src: overview01, alt: 'A player lining up a shot on a blue pool table' },
+	{ src: overview02, alt: 'Rows of blue pool tables inside a pool hall' },
+	{ src: overview03, alt: 'Two cues resting on blue cloth next to pool balls' },
+	{ src: overview04, alt: 'Pool balls spread across a blue table during a game' },
+];
+---
+
+<section class="section-shell light-panel" id="overview" aria-labelledby="overview-title" data-overview-scene>
+	<div class="page-width overview-grid">
+		<div class="overview-copy">
+			<h2 class="section-heading" id="overview-title">Overview</h2>
+			<p class="mt-6 text-body">Pool is a billiards game played on a table with pockets. Players use a cue to strike the white cue ball and send other balls into the pockets. Billiards developed from outdoor lawn games into table games, pool is one branch of that history.</p>
+			<a class="source-link mt-6" href="https://bca-pool.com/page/39" target="_blank" rel="noopener">
+				History: BCA <span class="inline-block no-underline" aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span>
+			</a>
+		</div>
+		<div class="gallery" data-overview-track>
+			<div class="gallery-stage" data-overview-stage>
+				<ol class="photo-stack" id="overview-photos" aria-label="Overview photos">
+					{photos.map(({ src, alt }) => (
+						<li>
+							<Image
+								src={src} alt={alt} width={720} widths={[360, 480, 720, 840, 1080, 1320, 1440]} data-nav-dark-surface
+								sizes="(max-width: 48rem) calc(100vw - max(3rem, 13.334vw)), min(46vw, 654px)"
+								format="webp" quality={82} layout="none"
+							/>
+						</li>
+					))}
+				</ol>
+			</div>
+		</div>
+	</div>
+</section>
+
+<style>
+	.overview-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 480fr) minmax(0, 702fr);
+		align-items: start;
+		gap: clamp(2rem, 4.45vw, 4rem);
+	}
+
+	.gallery {
+		padding-inline: clamp(0.5rem, 1.67vw, 1.5rem);
+	}
+
+	.photo-stack {
+		--peek: clamp(0.625rem, 1.111vw, 1rem);
+		--stack-peek: calc(3 * var(--peek));
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.75rem;
+	}
+
+	.photo-stack img {
+		display: block;
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		height: auto;
+		border-radius: 0.75rem;
+	}
+
+	[data-scroll-gallery] {
+		--overview-space: calc(var(--viewport-block) - var(--header-offset));
+		--overview-padding: clamp(1rem, calc(var(--viewport-block) * 0.06), 3rem);
+		display: block;
+		min-block-size: 0;
+		padding-block: 0;
+	}
+
+	[data-scroll-gallery] .gallery::after {
+		content: '';
+		display: block;
+		block-size: clamp(60rem, calc(var(--viewport-block) * 2), 150rem);
+	}
+
+	[data-scroll-gallery='reduced'] .gallery::after {
+		block-size: clamp(18rem, calc(var(--viewport-block) * 0.54), 36rem);
+	}
+
+	[data-scroll-gallery] .gallery-stage {
+		position: sticky;
+		top: var(--header-offset);
+		display: grid;
+		min-block-size: var(--overview-space);
+		align-content: center;
+		padding-block: var(--overview-padding);
+	}
+
+	[data-scroll-gallery] .photo-stack {
+		inline-size: min(100%, calc((var(--overview-space) - 2 * var(--overview-padding) - var(--stack-peek)) * 16 / 9));
+		margin-inline: auto;
+		padding-block-start: var(--stack-peek);
+		gap: 0;
+		overflow: hidden;
+		overflow: clip;
+	}
+
+	[data-scroll-gallery] .photo-stack li {
+		grid-area: 1 / 1;
+		align-self: start;
+	}
+
+	@media (width > 48rem) {
+		[data-scroll-gallery] .overview-copy {
+			position: sticky;
+			top: var(--header-offset);
+			min-block-size: var(--overview-space);
+			align-content: center;
+			padding-block: var(--overview-padding);
+		}
+	}
+
+	@media (max-width: 48rem) {
+		.overview-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.gallery {
+			padding-inline: 0;
+		}
+
+		[data-scroll-gallery] .overview-copy {
+			padding-block-start: clamp(2rem, calc(var(--viewport-block) * 0.06), 3rem);
+		}
+	}
+</style>

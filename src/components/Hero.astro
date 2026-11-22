@@ -1,0 +1,113 @@
+---
+import background from '../assets/hero/hero.mp4?url';
+import poster from '../assets/hero/hero-poster.webp?url';
+import BallStill from './BallStill.astro';
+---
+
+<section class="hero" id="hero" aria-labelledby="hero-title">
+	<div class="hero-media" aria-hidden="true">
+		<video data-hero-video data-src={background} poster={poster} muted loop playsinline preload="none"></video>
+	</div>
+	<div class="page-width">
+		<h1 class="text-hero font-semibold" id="hero-title">Learn the basics of pool.</h1>
+		<p class="mt-4 text-body text-muted">Explore the equipment, rules, and techniques.</p>
+		<BallStill class="hero-ball" actionLabel="Strike the 9-ball" data-ball-anchor eager />
+		<button class="hero-video-toggle" type="button" data-hero-toggle aria-label="Play background video" hidden>
+			<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+				<path class="hero-play-icon" d="M7 4.5v11l8-5.5z" />
+				<path class="hero-pause-icon" d="M6 5h3v10H6zM11 5h3v10h-3z" />
+			</svg>
+		</button>
+	</div>
+</section>
+
+<script>
+	import { initHeroVideo } from '../scripts/hero-video';
+
+	const hero = document.getElementById('hero');
+	if (hero) {
+		const dispose = initHeroVideo(hero);
+		import.meta.hot?.dispose(dispose);
+	}
+</script>
+
+<style>
+	.hero {
+		position: relative;
+		isolation: isolate;
+		display: grid;
+		align-content: center;
+		min-block-size: var(--section-height);
+		/* Balance the space below the ball, with extra room on taller screens. */
+		--hero-bottom-inset: clamp(0rem, calc((var(--viewport-block) - 48rem) * 0.40625), 6.5rem);
+		padding-block: calc(var(--header-offset) + 2rem) calc(5rem + var(--hero-bottom-inset));
+		text-align: center;
+	}
+
+	.hero-ball {
+		width: min(100%, clamp(10.5rem, 19.5vw, 17.5rem));
+		margin: clamp(2.5rem, 5.6vw, 5rem) auto 0;
+	}
+
+	.hero-media {
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+	}
+
+	.hero-media video {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.hero-media::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: rgb(8 8 8 / 60%);
+	}
+
+	.hero-video-toggle:not([hidden]) {
+		position: absolute;
+		right: max(var(--spacing-gutter), calc((100% - 90rem) / 2 + 6rem));
+		bottom: clamp(2rem, calc(var(--viewport-block) * 0.1484), 9.5rem);
+		display: grid;
+		width: 2.5rem;
+		height: 2.5rem;
+		place-items: center;
+		border: 1px solid var(--color-border-strong);
+		border-radius: 50%;
+		background: rgb(8 8 8 / 70%);
+		cursor: pointer;
+	}
+
+	.hero-video-toggle[data-playing] .hero-play-icon,
+	.hero-video-toggle:not([data-playing]) .hero-pause-icon {
+		display: none;
+	}
+
+	@media (hover: hover) {
+		.hero-video-toggle:not([hidden]):hover {
+			border-color: currentColor;
+			color: var(--color-accent);
+		}
+	}
+
+	.hero-video-toggle:active {
+		opacity: 0.8;
+	}
+
+	@media (max-height: 25rem) {
+		.hero {
+			min-block-size: 0;
+			padding-block: 2rem 3rem;
+		}
+
+		.hero-ball {
+			width: min(100%, clamp(5.25rem, calc(var(--viewport-block) * 0.3), 8rem));
+			margin-block-start: 1.25rem;
+		}
+	}
+</style>

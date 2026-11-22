@@ -1,0 +1,242 @@
+---
+import ReviewStar from './ReviewStar.astro'
+import { blankReview, reviewLimits, reviewStars } from '../data/review-fields'
+import type { ReviewErrors, ReviewFields } from '../data/review-fields'
+
+interface Props {
+	action: string
+	values?: ReviewFields
+	errors?: ReviewErrors
+	serviceError?: string
+	showReviewsLink?: boolean
+}
+
+const { action, values = blankReview, errors = {}, serviceError, showReviewsLink = false } = Astro.props
+// HTML parsing discards the first newline immediately inside a textarea.
+const comment = '\n' + values.comment
+const ratingLabels = ['1 star, Not helpful', '2 stars', '3 stars', '4 stars', '5 stars, Very helpful']
+const errorTargets = {
+	displayName: 'feedback-display-name',
+	rating: `feedback-rating-${reviewStars[0]}`,
+	comment: 'feedback-comment',
+} as const
+---
+
+<form method="post" action={action} data-review-form>
+	{(serviceError || Object.keys(errors).length > 0) && (
+		<div class="review-errors" aria-labelledby="review-error-title">
+			<h2 id="review-error-title" class="font-semibold">Your review hasn’t been saved</h2>
+			{serviceError && <p>{serviceError}</p>}
+			{Object.keys(errors).length > 0 && (
+				<ul>
+					{Object.entries(errors).map(([field, message]) => (
+						<li><a href={`#${errorTargets[field as keyof ReviewFields]}`}>{message}</a></li>
+					))}
+				</ul>
+			)}
+		</div>
+	)}
+
+	<fieldset class="feedback-fields" aria-describedby={errors.rating ? 'feedback-rating-error' : undefined}>
+		<legend class="sr-only">Helpfulness rating</legend>
+		{errors.rating && <p class="field-error" id="feedback-rating-error">{errors.rating}</p>}
+		<div class="rating-grid">
+			{reviewStars.map((value) => (
+				<label class="rating">
+					<input
+						class="sr-only"
+						id={`feedback-rating-${value}`}
+						type="radio"
+						name="rating"
+						value={value}
+						checked={values.rating === String(value)}
+						required
+						autocomplete="off"
+					/>
+					<span class="rating-box"><ReviewStar /></span>
+					<span class="sr-only">{ratingLabels[value - 1]}</span>
+				</label>
+			))}
+		</div>
+	</fieldset>
+
+	<label class="field-label" for="feedback-display-name">Name or nickname</label>
+	{errors.displayName && <p class="field-error" id="feedback-display-name-error">{errors.displayName}</p>}
+	<input
+		class="review-field"
+		id="feedback-display-name"
+		name="displayName"
+		type="text"
+		value={values.displayName}
+		autocomplete="nickname"
+		maxlength={reviewLimits.displayName}
+		required
+		aria-invalid={errors.displayName ? 'true' : undefined}
+		aria-describedby={errors.displayName ? 'feedback-display-name-error' : undefined}
+	/>
+	<label class="field-label" for="feedback-comment">Comment (optional)</label>
+	{errors.comment && <p class="field-error" id="feedback-comment-error">{errors.comment}</p>}
+	<textarea
+		class="review-field"
+		id="feedback-comment"
+		name="comment"
+		maxlength={reviewLimits.comment}
+		aria-invalid={errors.comment ? 'true' : undefined}
+		aria-describedby={errors.comment ? 'feedback-comment-error' : undefined}
+	>{comment}</textarea>
+	<div class="form-actions">
+		<button class="send-feedback" type="submit">Send feedback</button>
+		{showReviewsLink && <a class="button-secondary" href={action}>Read reviews</a>}
+	</div>
+	<p class="sr-only" role="status" data-review-status></p>
+</form>
+
+<script>
+	const events = new AbortController()
+	for (const form of document.querySelectorAll<HTMLFormElement>('[data-review-form]')) {
+		const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')
+		const status = form.querySelector<HTMLElement>('[data-review-status]')
+		if (!button || !status) continue
+		const idleLabel = button.textContent
+		form.addEventListener('submit', (event) => {
+			if (button.disabled) {
+				event.preventDefault()
+				return
+			}
+			button.disabled = true
+			button.textContent = 'Sending…'
+			status.textContent = 'Sending feedback…'
+		}, { signal: events.signal })
+		window.addEventListener('pageshow', () => {
+			button.disabled = false
+			button.textContent = idleLabel
+			status.textContent = ''
+		}, { signal: events.signal })
+	}
+	import.meta.hot?.dispose(() => events.abort())
+</script>
+
+<style>
+	.feedback-fields {
+		min-inline-size: 0;
+		margin-block-start: 1.25rem;
+	}
+
+	.rating-grid {
+		display: grid;
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+	}
+
+	.rating {
+		cursor: pointer;
+	}
+
+	.rating-box {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		min-block-size: 3.5rem;
+		place-items: center;
+		border-radius: 0.5rem;
+		color: var(--color-muted);
+	}
+
+	.rating-box :global(svg) {
+		max-inline-size: 100%;
+		block-size: auto;
+	}
+
+	.rating:where(:has(input:checked), :has(~ .rating input:checked)) .rating-box {
+		--star-fill: currentColor;
+		color: var(--color-accent);
+	}
+
+	/* Keep focus visible when arrow keys move between native radios. */
+	.rating input:focus + .rating-box :global(svg) {
+		scale: 1.15;
+	}
+
+	.field-label {
+		display: block;
+		margin-block: 1.25rem 0.5rem;
+		font-size: var(--text-label);
+		font-weight: 500;
+	}
+
+	.review-field {
+		display: block;
+		width: 100%;
+		padding: 0.75rem 1rem;
+		border: 1px solid var(--color-border-strong);
+		border-radius: 0.5rem;
+	}
+
+	textarea.review-field {
+		min-height: 8rem;
+		resize: vertical;
+	}
+
+	.form-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem 1.25rem;
+		margin-block-start: 1.25rem;
+	}
+
+	.send-feedback {
+		min-height: 2.75rem;
+		min-inline-size: min(100%, 11rem);
+		padding-inline: 2rem;
+		border-radius: 2rem;
+		background: var(--color-accent);
+		color: var(--color-canvas);
+		font-size: var(--text-label);
+		font-weight: 500;
+	}
+
+	.send-feedback:enabled {
+		cursor: pointer;
+	}
+
+	.send-feedback:enabled:active,
+	.send-feedback:disabled {
+		opacity: 0.65;
+	}
+
+	@media (hover: hover) {
+		.rating-grid:has(.rating:hover) .rating-box {
+			--star-fill: none;
+			color: var(--color-muted);
+		}
+
+		.rating-grid:has(.rating:hover) .rating:where(:hover, :has(~ .rating:hover)) .rating-box {
+			--star-fill: currentColor;
+			color: var(--color-accent);
+		}
+
+		.send-feedback:enabled:hover {
+			background: var(--color-link-on-dark);
+		}
+	}
+
+	.review-errors {
+		padding: 1rem;
+		border: 1px solid currentColor;
+		border-radius: 0.5rem;
+	}
+
+	.review-errors a {
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+
+	.field-error {
+		margin-block-end: 0.5rem;
+		font-weight: 600;
+	}
+
+	.review-field[aria-invalid='true'] {
+		border-color: currentColor;
+	}
+
+</style>

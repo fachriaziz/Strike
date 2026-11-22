@@ -1,0 +1,142 @@
+---
+import { initialTechnique, techniqueTopics } from '../data/guide'
+import { getTechniqueVideo } from '../data/video-assets'
+import placeholderVideo from '../assets/hero/hero.mp4?url'
+import placeholderPoster from '../assets/hero/hero-poster.webp?url'
+
+const topics = techniqueTopics.map((topic) => ({ ...topic, video: getTechniqueVideo(topic.id) }))
+const initialTopic = topics.find(({ id }) => id === initialTechnique)
+const initialVideo = initialTopic?.video
+---
+
+<section class="section-shell light-panel" id="technique" aria-labelledby="technique-title" data-initial-topic={initialTechnique}>
+	<div class="page-width">
+		<div class="technique-content">
+			<h2 class="section-heading mb-8" id="technique-title">Technique</h2>
+			<div class="technique-media" data-nav-dark-surface>
+				<video controls playsinline preload="none" data-technique-video
+					src={initialVideo?.src ?? placeholderVideo} poster={initialVideo?.poster ?? placeholderPoster}
+					aria-label={initialVideo ? `${initialTopic?.label} demonstration` : 'Placeholder video'}>
+					{initialVideo?.captions && <track kind="captions" label="English" srclang="en" src={initialVideo.captions} />}
+				</video>
+			</div>
+			<p class="mt-3 text-label" data-video-placeholder data-placeholder-src={placeholderVideo} data-placeholder-poster={placeholderPoster}
+				hidden={!!initialVideo}>Placeholder video. The technique demonstration is coming soon.</p>
+			<div class="video-feedback">
+				<p role="status" data-video-status></p>
+				<button class="button-secondary" type="button" data-video-retry hidden>Retry video</button>
+			</div>
+			<div class="technique-topics" aria-label="Technique topics" data-topic-list hidden>
+				{topics.map(({ id, label, video }) => (
+					<button class="topic" type="button" data-topic={id} id={`technique-tab-${id}`} aria-controls={`technique-panel-${id}`}
+						data-video-src={video?.src} data-video-poster={video?.poster} data-video-captions={video?.captions}>{label}</button>
+				))}
+			</div>
+			<div class="mt-4 grid gap-6">
+				{techniqueTopics.map(({ id, label, description }) => (
+					<article id={`technique-panel-${id}`} aria-labelledby={`technique-topic-${id}`} class="space-y-2">
+						<h3 class="text-subheading font-semibold" id={`technique-topic-${id}`}>{label}</h3>
+						<p class="text-body">{description}</p>
+					</article>
+				))}
+			</div>
+		</div>
+	</div>
+</section>
+
+<script>
+	import { initTopicTabs } from '../scripts/topic-tabs'
+	const technique = document.getElementById('technique')
+	if (technique) {
+		const player = technique.querySelector<HTMLVideoElement>('[data-technique-video]')
+		const placeholder = technique.querySelector<HTMLElement>('[data-video-placeholder]')
+		const status = technique.querySelector<HTMLElement>('[data-video-status]')
+		const retry = technique.querySelector<HTMLButtonElement>('[data-video-retry]')
+		const showError = (failed: boolean) => {
+			if (status) status.textContent = failed ? 'This video could not be loaded.' : ''
+			if (retry) retry.hidden = !failed
+		}
+		player?.addEventListener('error', () => showError(!!player.error))
+		retry?.addEventListener('click', () => {
+			showError(false)
+			player?.load()
+			player?.focus()
+		})
+
+		initTopicTabs(technique, (_id, tab) => {
+			if (!player || !placeholder) return
+			const isPlaceholder = !tab.dataset.videoSrc
+			const source = tab.dataset.videoSrc ?? placeholder.dataset.placeholderSrc!
+
+			player.pause()
+			placeholder.hidden = !isPlaceholder
+			player.setAttribute('aria-label', isPlaceholder ? 'Placeholder video' : `${tab.textContent?.trim()} demonstration`)
+			if (player.getAttribute('src') === source) {
+				player.currentTime = 0
+				return
+			}
+			showError(false)
+			player.querySelector('track')?.remove()
+			player.src = source
+			player.poster = tab.dataset.videoPoster ?? placeholder.dataset.placeholderPoster!
+			if (tab.dataset.videoCaptions) {
+				const track = document.createElement('track')
+				track.kind = 'captions'
+				track.label = 'English'
+				track.srclang = 'en'
+				track.src = tab.dataset.videoCaptions
+				player.append(track)
+			}
+		})
+	}
+</script>
+
+<style>
+	.technique-content {
+		max-width: 56.25rem;
+		margin-inline: auto;
+	}
+
+	.technique-media {
+		aspect-ratio: 16 / 9;
+		background: var(--color-canvas);
+		border-radius: 1rem;
+	}
+
+	.technique-media video:not([hidden]) {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		border-radius: inherit;
+	}
+
+	.video-feedback:has(p:not(:empty)) {
+		margin-block-start: 0.75rem;
+		font-size: var(--text-label);
+	}
+
+	.video-feedback .button-secondary {
+		margin-block-start: 0.5rem;
+	}
+
+	.technique-topics:not([hidden]) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		margin-block-start: 1.5rem;
+	}
+
+	.technique-topics .topic {
+		min-block-size: 3rem;
+		min-inline-size: min(11rem, 100%);
+	}
+
+	.technique-topics .topic[aria-selected='true'] {
+		font-weight: 600;
+	}
+
+	.technique-content [role='tabpanel'] h3 {
+		display: none;
+	}
+</style>

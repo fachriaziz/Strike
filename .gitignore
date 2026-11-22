@@ -1,0 +1,44 @@
+# build output
+dist/
+
+# generated types
+.astro/
+
+# local reviews
+/data/
+/.data/
+
+# dependencies
+node_modules/
+
+# Playwright output
+playwright-report/
+test-results/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment variables
+.env
+.env.*
+!.env.example
+
+# local workspace and agent notes
+/AGENTS.md
+/memory/
+/docs/superpowers/
+/.impeccable/
+/.vscode/
+/debug.log
+
+# editing master (the site imports hero.mp4)
+/src/assets/hero/hero.MOV
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/

@@ -1,0 +1,197 @@
+---
+import FeedbackForm from '../../components/FeedbackForm.astro'
+import Footer from '../../components/Footer.astro'
+import Navigation from '../../components/Navigation.astro'
+import ReviewStar from '../../components/ReviewStar.astro'
+import { blankReview, reviewStars } from '../../data/review-fields'
+import type { ReviewErrors } from '../../data/review-fields'
+import Layout from '../../layouts/Layout.astro'
+import { listReviews, readReview, saveReview, validateReview } from '../../server/reviews'
+import type { Review } from '../../server/reviews'
+
+export const prerender = false
+
+const home = import.meta.env.BASE_URL.replace(/\/?$/, '/')
+const reviewsPath = `${home}reviews/`
+const method = Astro.request.method
+const isSubmission = method === 'POST'
+if (!['GET', 'HEAD', 'POST'].includes(method)) {
+	return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD, POST' } })
+}
+Astro.response.headers.set('Cache-Control', 'no-store')
+
+let values = blankReview
+let fieldErrors: ReviewErrors = {}
+let serviceError: string | undefined
+let reviews: Review[] = []
+let unavailable = false
+
+if (isSubmission) {
+	try {
+		values = readReview(await Astro.request.formData())
+	} catch {
+		Astro.response.status = 400
+		serviceError = 'We couldn’t read your submission. Please try again.'
+	}
+
+	if (!serviceError) {
+		fieldErrors = validateReview(values)
+		if (Object.keys(fieldErrors).length) {
+			Astro.response.status = 422
+		} else {
+			try {
+				saveReview(values)
+				return Astro.redirect(reviewsPath, 303)
+			} catch (error) {
+				console.error('Unable to save a local review', error)
+				Astro.response.status = 503
+				serviceError = 'We couldn’t save your review. Your entries are still here. Try sending it again.'
+			}
+		}
+	}
+} else {
+	try {
+		reviews = listReviews()
+	} catch (error) {
+		console.error('Unable to read local reviews', error)
+		Astro.response.status = 503
+		unavailable = true
+	}
+}
+
+const date = new Intl.DateTimeFormat('en', { dateStyle: 'medium' })
+const graphemes = new Intl.Segmenter()
+
+function initials(name: string) {
+	const words = name.trim().split(/\s+/)
+	const parts = words.length > 1 ? [words[0], words[words.length - 1]] : words
+	return parts.map((part) => graphemes.segment(part).containing(0)?.segment ?? '').join('').toLocaleUpperCase('en')
+}
+---
+
+<Layout title="Reviews | Strike" description="Read feedback about Strike’s guide to the basics of pool.">
+	<Navigation homeHref={home} />
+	<main id="main-content" class="section-shell reviews" tabindex="-1">
+		<div class="page-width">
+			<h1 class="section-heading">Reviews</h1>
+
+			{isSubmission ? (
+				<div class="review-list review-retry">
+					<FeedbackForm action={reviewsPath} values={values} errors={fieldErrors} serviceError={serviceError} />
+				</div>
+			) : (
+				<div class="review-list">
+					{unavailable ? (
+						<p>Reviews are temporarily unavailable. <a class="source-link" href={reviewsPath}>Try again</a></p>
+					) : reviews.length === 0 ? (
+						<h2 class="review-empty text-subheading font-semibold">No reviews yet</h2>
+					) : (
+						<ul class="review-entries" role="list" aria-label="Submitted reviews">
+							{reviews.map((review) => (
+								<li id={`review-${review.id}`}>
+									<article class="review" aria-labelledby={`review-name-${review.id}`}>
+										<span class="review-initials" aria-hidden="true">{initials(review.displayName)}</span>
+										<header class="review-author">
+											<h2 class="font-semibold" id={`review-name-${review.id}`}>{review.displayName}</h2>
+											<time datetime={review.createdAt}>{date.format(new Date(review.createdAt))}</time>
+										</header>
+										<p class="review-rating">
+											<span class="sr-only">{review.rating} out of 5 stars</span>
+											{reviewStars.map((star) => <ReviewStar filled={star <= review.rating} size={16} />)}
+										</p>
+										{review.comment && <p class="review-comment">{review.comment}</p>}
+									</article>
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
+			)}
+		</div>
+	</main>
+	<Footer homeHref={home} />
+</Layout>
+
+<style>
+	.reviews {
+		padding-block-start: calc(var(--header-offset) + clamp(2rem, calc(var(--viewport-block) * 0.08), 6rem));
+		align-content: start;
+	}
+
+	.review-list {
+		margin-block-start: 2rem;
+	}
+
+	.review-retry {
+		max-inline-size: 40rem;
+	}
+
+	.review-entries > li {
+		padding-block: clamp(1.25rem, 2.4vw, 2rem);
+		border-block-start: 1px solid var(--color-border);
+	}
+
+	.review-empty {
+		padding-block: clamp(1.25rem, 3vw, 2.5rem);
+		border-block-start: 1px solid var(--color-border);
+	}
+
+	.review {
+		display: grid;
+		grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+		grid-template-areas: 'avatar author rating' '. comment comment';
+		align-items: start;
+		column-gap: clamp(0.75rem, 2vw, 1.25rem);
+		overflow-wrap: anywhere;
+	}
+
+	.review-initials {
+		grid-area: avatar;
+		display: grid;
+		aspect-ratio: 1;
+		place-items: center;
+		border-radius: 50%;
+		background: var(--color-accent);
+		color: var(--color-canvas);
+		font-size: var(--text-label);
+		font-weight: 600;
+	}
+
+	.review-author {
+		grid-area: author;
+		align-self: center;
+	}
+
+	.review-rating {
+		grid-area: rating;
+		display: flex;
+		justify-self: end;
+		gap: 0.125rem;
+		padding-block: 0.1875rem;
+		color: var(--color-accent);
+	}
+
+	.review time {
+		color: var(--color-muted);
+		font-size: var(--text-label);
+	}
+
+	.review-comment {
+		grid-area: comment;
+		max-inline-size: 70ch;
+		margin-block-start: 0.75rem;
+		white-space: pre-wrap;
+	}
+
+	@media (max-width: 30rem) {
+		.review {
+			grid-template-columns: 2.5rem minmax(0, 1fr);
+			grid-template-areas: 'avatar author' '. rating' '. comment';
+		}
+
+		.review-rating {
+			justify-self: start;
+			margin-block-start: 0.25rem;
+		}
+	}
+</style>

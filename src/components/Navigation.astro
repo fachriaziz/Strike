@@ -1,0 +1,348 @@
+---
+import brandMark from '../assets/brand/mark-dark.svg?url'
+import brandMarkOnLight from '../assets/brand/mark-light.svg?url'
+
+interface Props {
+	homeHref?: string
+}
+
+const { homeHref = '' } = Astro.props
+const links = [
+	['overview', 'Overview'],
+	['equipment', 'Equipment'],
+	['rules', 'Rules'],
+	['technique', 'Technique'],
+	['feedback', 'Feedback'],
+] as const
+---
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" data-section-navigation={homeHref ? undefined : ''}>
+	<div class="page-width site-header-inner">
+		<a class="brand" href={`${homeHref}#hero`}>
+			<span class="brand-mark" aria-hidden="true">
+				<img src={brandMark} width="30" height="26" alt="" />
+				<img src={brandMarkOnLight} width="30" height="26" alt="" />
+			</span>
+			<span>Strike</span>
+		</a>
+		<nav aria-label="Page sections" class="site-links">
+			{links.map(([id, label]) => <a href={`${homeHref}#${id}`}>{label}</a>)}
+		</nav>
+	</div>
+</header>
+
+<script>
+	import { initPageScroll } from '../scripts/page-scroll'
+
+	const header = document.querySelector<HTMLElement>('.site-header')
+	if (header) {
+		const root = document.documentElement
+		const brand = header.querySelector<HTMLElement>('.brand')!
+		const nav = header.querySelector<HTMLElement>('.site-links')!
+		const links = [...nav.querySelectorAll<HTMLAnchorElement>('a')]
+		const labels = [brand, ...links]
+		const sections = links.flatMap((link) => {
+			const section = link.getAttribute('href')?.startsWith('#') && document.getElementById(link.hash.slice(1))
+			return section ? [{ link, section }] : []
+		})
+		const events = new AbortController()
+		const motionAllowed = window.matchMedia('(prefers-reduced-motion: no-preference)')
+		const pageScroll = header.hasAttribute('data-section-navigation') ? initPageScroll() : undefined
+		let current: HTMLAnchorElement | undefined
+		let pendingAnchor: HTMLElement | undefined
+		let restoreAnchor = false
+		let anchorInset = 0
+		let layoutDirty = true
+		let frame = 0
+		let labelCenters: ReturnType<typeof labelCenter>[] | undefined
+
+		function labelCenter(label: HTMLElement) {
+			const { left, top, width, height } = label.getBoundingClientRect()
+			return { x: left + width / 2, y: top + height / 2 }
+		}
+
+		function hasLightBackdrop({ x, y }: ReturnType<typeof labelCenter>) {
+			const surface = document.elementsFromPoint(x, y).find((element) => {
+				if (element instanceof HTMLImageElement && element.naturalWidth === 0) return false
+				return element.matches('.light-panel, [data-nav-dark-surface]')
+			})
+			return surface?.classList.contains('light-panel') ?? false
+		}
+
+		function update() {
+			frame = 0
+			if (layoutDirty) {
+				layoutDirty = false
+				const headerHeight = header!.offsetHeight
+				const takesTooMuchSpace = headerHeight > root.clientHeight * 0.4
+				const height = `${headerHeight}px`
+				if (root.style.getPropertyValue('--measured-header-height') !== height) {
+					root.style.setProperty('--measured-header-height', height)
+				}
+				root.toggleAttribute('data-header-in-flow', takesTooMuchSpace)
+				anchorInset = parseFloat(getComputedStyle(root).scrollPaddingBlockStart) || 0
+				labelCenters = pageScroll && !takesTooMuchSpace ? labels.map(labelCenter) : undefined
+			}
+			if (!pageScroll) return
+
+			if (restoreAnchor) {
+				restoreAnchor = false
+				pendingAnchor?.scrollIntoView({ behavior: 'instant', block: 'start' })
+			}
+			const viewportHeight = root.clientHeight
+			const scrollLimit = root.scrollHeight - viewportHeight
+			const position = window.scrollY
+			if (pendingAnchor) {
+				const destination = position + pendingAnchor.getBoundingClientRect().top - anchorInset
+				if (Math.abs(position - Math.max(0, Math.min(scrollLimit, destination))) <= 1) {
+					pendingAnchor = undefined
+					window.history.replaceState(null, '')
+				}
+			}
+			const atPageEnd = scrollLimit > 0 && position >= scrollLimit - 1
+			const boundary = Math.max(header!.getBoundingClientRect().bottom, anchorInset) + 1
+			let next: HTMLAnchorElement | undefined
+			for (const { link, section } of sections) {
+				const { top, bottom } = section.getBoundingClientRect()
+				if (top <= boundary || (atPageEnd && top < viewportHeight && bottom > 0)) next = link
+			}
+			const lightBackdrops = labels.map((label, index) => hasLightBackdrop(labelCenters?.[index] ?? labelCenter(label)))
+			labels.forEach((label, index) => label.toggleAttribute('data-light-surface', lightBackdrops[index]))
+			if (next === current) return
+			current?.removeAttribute('aria-current')
+			next?.setAttribute('aria-current', 'location')
+			current = next
+		}
+
+		function invalidate() {
+			if (!frame) frame = requestAnimationFrame(update)
+		}
+
+		function invalidateLayout() {
+			layoutDirty = true
+			invalidate()
+		}
+
+		function restorePendingAnchor() {
+			const { hash } = window.location
+			pendingAnchor = window.history.state?.strikePendingAnchor === hash
+				? document.getElementById(hash.slice(1)) ?? undefined
+				: undefined
+			restoreAnchor = !!pendingAnchor
+			// The browser restores its saved scroll position after dispatching popstate.
+			invalidate()
+		}
+
+		const { signal } = events
+		window.addEventListener('resize', invalidateLayout, { signal })
+		window.addEventListener('pageshow', (event) => {
+			invalidateLayout()
+			if (pageScroll && event.persisted) restorePendingAnchor()
+		}, { signal })
+		const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(invalidateLayout) : undefined
+		resize?.observe(header)
+		if (pageScroll) for (const label of labels) resize?.observe(label)
+
+		if (pageScroll) {
+			header.addEventListener('click', (event) => {
+				if (!motionAllowed.matches) return
+				if (event.defaultPrevented || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+				const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href^="#"]') : null
+				const section = link && document.getElementById(link.hash.slice(1))
+				if (!link || !section) return
+
+				event.preventDefault()
+				restoreAnchor = false
+				if (window.location.hash !== link.hash) {
+					window.history.pushState({ strikePendingAnchor: link.hash }, '', link.hash)
+					pendingAnchor = section
+				}
+				const heading = section.querySelector<HTMLElement>('h1, h2') ?? section
+				if (!heading.hasAttribute('tabindex')) {
+					heading.tabIndex = -1
+					heading.addEventListener('blur', () => heading.removeAttribute('tabindex'), { once: true })
+				}
+				heading.focus({ preventScroll: true })
+				pageScroll.scrollTo(section)
+				invalidate()
+			}, { signal })
+			window.addEventListener('scroll', invalidate, { passive: true, signal })
+			window.addEventListener('hashchange', invalidate, { signal })
+			window.addEventListener('popstate', restorePendingAnchor, { signal })
+			const main = document.getElementById('main-content')
+			if (main) {
+				resize?.observe(main)
+				for (const event of ['load', 'error']) main.addEventListener(event, invalidate, { capture: true, signal })
+			}
+		}
+		update()
+		if (pageScroll && window.history.state?.strikePendingAnchor) restorePendingAnchor()
+
+		import.meta.hot?.dispose(() => {
+			events.abort()
+			pageScroll?.destroy()
+			resize?.disconnect()
+			root.removeAttribute('data-header-in-flow')
+			root.style.removeProperty('--measured-header-height')
+			cancelAnimationFrame(frame)
+			current?.removeAttribute('aria-current')
+		})
+	}
+</script>
+
+<style>
+	.site-header {
+		position: fixed;
+		inset: 0 0 auto;
+		z-index: 10;
+	}
+
+	:global(html[data-header-in-flow]) .site-header {
+		position: relative;
+	}
+
+	@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))
+		and ((mask-image: linear-gradient(black, transparent)) or (-webkit-mask-image: linear-gradient(black, transparent))) {
+		.site-header::before {
+			--blur-fade: clamp(3.5rem, 5vw, 4.5rem);
+			position: absolute;
+			z-index: -1;
+			inset: 0 0 -1.25rem;
+			--blur-mask: linear-gradient(
+				to bottom,
+				black 0%,
+				rgb(0 0 0 / 94%) calc(100% - var(--blur-fade)),
+				rgb(0 0 0 / 82%) calc(100% - var(--blur-fade) * 0.75),
+				rgb(0 0 0 / 50%) calc(100% - var(--blur-fade) * 0.5),
+				rgb(0 0 0 / 18%) calc(100% - var(--blur-fade) * 0.25),
+				rgb(0 0 0 / 4%) calc(100% - var(--blur-fade) * 0.125),
+				transparent 100%
+			);
+			-webkit-backdrop-filter: blur(18px);
+			backdrop-filter: blur(18px);
+			-webkit-mask-image: var(--blur-mask);
+			mask-image: var(--blur-mask);
+			pointer-events: none;
+			content: '';
+		}
+	}
+
+	.site-header-inner,
+	.site-links {
+		display: flex;
+		align-items: center;
+	}
+
+	.site-header-inner {
+		min-block-size: var(--spacing-header);
+		justify-content: space-between;
+		gap: 1rem 2rem;
+	}
+
+	.site-links {
+		--nav-accent: var(--color-accent);
+		flex-wrap: wrap;
+		min-inline-size: 0;
+		gap: 0.25rem clamp(0.75rem, 2.22vw, 2rem);
+		font-size: var(--text-label);
+		line-height: var(--text-label--line-height);
+		font-weight: 500;
+	}
+
+	[data-light-surface] {
+		--nav-accent: var(--color-link-on-panel);
+		color: var(--color-canvas);
+	}
+
+	.brand:not([data-light-surface]) > span:last-child,
+	.site-links a:not([data-light-surface]) {
+		text-shadow: 0 0 0.2rem rgb(8 8 8 / 85%), 0 0 0.5rem rgb(8 8 8 / 85%);
+	}
+
+	.brand-mark img:last-child,
+	.brand[data-light-surface] .brand-mark img:first-child {
+		display: none;
+	}
+
+	.brand[data-light-surface] .brand-mark img:last-child {
+		display: block;
+	}
+
+	.site-links a {
+		padding-block: 0.375rem;
+		overflow-wrap: anywhere;
+	}
+
+	.site-links a[aria-current='location'] {
+		color: var(--nav-accent);
+	}
+
+	@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+		.site-header::before {
+			display: none;
+		}
+	}
+
+	@media (hover: hover) {
+		.site-links a:hover {
+			color: var(--nav-accent);
+		}
+	}
+
+	@media (forced-colors: active) {
+		.site-links a[aria-current='location'] {
+			forced-color-adjust: none;
+			color: Highlight;
+			text-shadow: none;
+		}
+	}
+
+	.skip-link {
+		position: fixed;
+		inset: 0.5rem auto auto 0.5rem;
+		z-index: 11;
+		transform: translateY(-200%);
+		padding: 0.5rem 1rem;
+		background: var(--color-panel);
+		color: var(--color-canvas);
+	}
+
+	.skip-link:focus {
+		transform: none;
+	}
+
+	@media (max-width: 40rem) {
+		.site-header-inner {
+			flex-direction: column;
+			align-items: start;
+			justify-content: center;
+			gap: 0.125rem;
+			padding-block: 0.75rem;
+		}
+
+		.site-links {
+			column-gap: 0.5rem;
+			font-size: 0.8125rem;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.site-links a {
+			display: inline-flex;
+			align-items: center;
+			min-block-size: 2.75rem;
+		}
+	}
+
+	@media (max-height: 25rem) {
+		.site-header {
+			position: relative;
+		}
+
+		.site-header-inner {
+			min-block-size: auto;
+			padding-block: 0.75rem;
+		}
+	}
+</style>

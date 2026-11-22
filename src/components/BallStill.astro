@@ -1,0 +1,51 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import still from '../assets/ball/9-ball.webp?url';
+
+interface Props extends HTMLAttributes<'div'> {
+	actionLabel: string;
+	eager?: boolean;
+}
+
+const { class: className, actionLabel, eager, ...attributes } = Astro.props;
+---
+
+<div {...attributes} class:list={['ball-slot', className]}>
+	<img data-ball-still src={still} alt="" width="640" height="640" loading={eager ? 'eager' : 'lazy'} decoding="async" />
+	<button class="ball-trigger" type="button" data-ball-trigger aria-label={actionLabel} hidden></button>
+</div>
+
+<style>
+	.ball-slot > img,
+	.ball-slot > :global([data-ball-canvas]) {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.ball-slot[data-ball-rendered] > img {
+		visibility: hidden;
+	}
+
+	.ball-slot > :global([data-ball-canvas]) {
+		pointer-events: none;
+	}
+
+	.ball-trigger {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		width: 100%;
+		border-radius: 50%;
+		cursor: pointer;
+	}
+
+	@media (hover: hover) {
+		.ball-trigger:hover:not(:focus-visible) {
+			outline: 1px solid var(--color-accent);
+			outline-offset: 2px;
+		}
+	}
+</style>

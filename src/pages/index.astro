@@ -1,0 +1,43 @@
+---
+import 'lenis/dist/lenis.css';
+import ball from '../assets/ball/9-ball.glb?url';
+import spinSound from '../assets/ball/spin.mp3?url';
+import Equipment from '../components/Equipment.astro';
+import Feedback from '../components/Feedback.astro';
+import Footer from '../components/Footer.astro';
+import Hero from '../components/Hero.astro';
+import Navigation from '../components/Navigation.astro';
+import Overview from '../components/Overview.astro';
+import Rules from '../components/Rules.astro';
+import Technique from '../components/Technique.astro';
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+	<Navigation />
+	<main id="main-content" class="landing-page" tabindex="-1" data-ball-src={ball}>
+		<Hero />
+		<Overview />
+		<Equipment />
+		<Rules />
+		<Technique />
+		<Feedback />
+		<audio src={spinSound} preload="none" data-ball-sound></audio>
+	</main>
+	<Footer />
+</Layout>
+
+<script>
+	import { initBallMotion } from '../scripts/ball';
+	import { initOverviewScroll } from '../scripts/overview-scroll';
+
+	const main = document.getElementById('main-content');
+	if (main) {
+		const disposeOverviewScroll = initOverviewScroll(main);
+		const disposeBallMotion = initBallMotion(main);
+		import.meta.hot?.dispose(() => {
+			disposeBallMotion();
+			disposeOverviewScroll();
+		});
+	}
+</script>

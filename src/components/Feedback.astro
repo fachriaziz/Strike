@@ -1,0 +1,40 @@
+---
+import BallStill from './BallStill.astro';
+import FeedbackForm from './FeedbackForm.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+
+<section class="section-shell" id="feedback" aria-labelledby="feedback-title">
+	<div class="page-width feedback-grid">
+		<div>
+			<h2 class="text-subheading font-semibold" id="feedback-title">How helpful was this guide?</h2>
+			<FeedbackForm action={`${base}reviews/`} showReviewsLink />
+		</div>
+		<BallStill class="feedback-ball" actionLabel="Strike the 9-ball" data-ball-anchor />
+	</div>
+</section>
+
+<style>
+	.feedback-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 528fr) minmax(0, 640fr);
+		align-items: start;
+		gap: clamp(2rem, 5.555vw, 5rem);
+	}
+
+	.feedback-ball {
+		order: -1;
+		margin: 1.25rem auto;
+	}
+
+	@media (max-width: 48rem) {
+		.feedback-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.feedback-ball {
+			order: 0;
+		}
+	}
+</style>

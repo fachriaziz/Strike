@@ -1,0 +1,67 @@
+---
+import rack8 from '../assets/rules/rack-8-ball.svg?url'
+import rack9 from '../assets/rules/rack-9-ball.svg?url'
+
+const games = [
+	{
+		name: '8-Ball',
+		image: rack8,
+		alt: 'Triangular rack with the black 8-ball in the middle and one solid and one stripe at the back corners',
+		play: 'Pocket all seven balls in your assigned group. Solids are numbered 1–7 and stripes are numbered 9–15.',
+		win: 'Once your group is clear, call a pocket for the 8-ball. Sink it legally in that pocket to win.',
+	},
+	{
+		name: '9-Ball',
+		image: rack9,
+		alt: 'Diamond rack with the 1-ball at the front and the striped 9-ball in the middle',
+		play: 'Play with balls numbered 1–9. On a regular shot, the cue ball must hit the lowest-numbered ball still on the table first. You can pocket a different ball on the same shot.',
+		win: 'Legally pocket the 9-ball to win, even if other balls remain.',
+	},
+]
+---
+
+<section class="section-shell rules-panel" id="rules" aria-labelledby="rules-title">
+	<div class="page-width">
+		<h2 class="section-heading mb-8" id="rules-title">Rules</h2>
+		<div class="rule-comparison">
+			{games.map(({ name, image, alt, play, win }) => (
+				<article>
+					<img src={image} alt={alt} width="600" height="280" loading="lazy" decoding="async" class="rack-image scroll-media" />
+					<div class="mt-6 space-y-3">
+						<h3 class="text-subheading font-semibold">{name}</h3>
+						<p class="text-body">{play}</p>
+						<p class="text-body">{win}</p>
+					</div>
+				</article>
+			))}
+		</div>
+		<a class="source-link mt-8" href="https://wpapool.com/rules/" target="_blank" rel="noopener">
+			Read the official WPA rules <span class="inline-block no-underline" aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span>
+		</a>
+	</div>
+</section>
+
+<style>
+	.rules-panel {
+		background: var(--color-surface-raised);
+		border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+	}
+
+	.rule-comparison {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: clamp(1.5rem, 3.333vw, 3rem);
+	}
+
+	.rack-image {
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+
+	@media (max-width: 48rem) {
+		.rule-comparison {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>
