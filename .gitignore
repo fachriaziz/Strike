@@ -5,7 +5,8 @@ dist/
 .astro/
 
 # local reviews
-/data/
+/data/*
+!/data/reviews.seed.sqlite
 /.data/
 
 # dependencies
